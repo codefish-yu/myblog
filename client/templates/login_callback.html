@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>微博授权</title>
+  <script src="/static/js/jquery.min.js"></script>
+</head>
+<body>
+
+    <script>
+        //获取微博授权登录页面认证成功后302跳转传回来的查询字符串的值
+        //url为:http://127.0.0.1:5000/login_callback?state=123&code=7d4ba51d80ab785b5a32da0aebfdbf60
+        function getQueryString(v){
+            var query=window.location.search.substring(1);//state=123&code=7d4ba51d80ab785b5a32da0aebfdbf60
+            var data = query.split('&')   //[state=123,code=xxx]
+            for (var i=0;i<data.length;i++){
+                var par = data[i].split('=');   //[state,123]
+                //如果查询字符串的key刚好是我要的(code),直接return他的值
+                if (par[0] == v){
+                    return par[1]
+                }
+            }
+            return null
+        }
+
+        //当页面加载完成时,自动执行以下函数,获取code的值
+        $(function(){
+            var code = getQueryString('code');
+            console.log(code)
+
+            //前端将获取到的code值通过发给ajax发给后端
+            $.ajax({
+                type:'get',
+                dataType:'json',
+                url:'http://127.0.0.1:8000/v1/users/weibo/token?code=' + code,
+                success:function(result){
+                    console.log(result)
+                    //用户已经在在我们的博客网站注册过,走正常登录流程(200)
+                    //正常登录流程就是1. 将jwt_token存到localstorage中(浏览器本地存储对象中)
+                    //2. 设置当前url为该用户博客首页
+
+                    if (result.code == 200){
+                        window.localStorage.setItem('dnblog_token',result.data.token)
+                        window.localStorage.setItem('dnblog_user',result.username)
+                        window.location = '/' + result.username + '/topics'
+                    }else if (result.code == 10999){
+                         //用户还未在咱们博客注册过,弹到注册页面,进行注册(10999)
+                         var wuid = result.wuid
+                         window.location  = '/register?wuid=' + wuid
+                    }
+                }
+            })
+        })
+    </script>
+
+</body>
+</html>
